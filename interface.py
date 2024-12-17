@@ -1,28 +1,18 @@
-# Libraries I used
+from tkinter import *
+from guifunctions import show_dirs, show_songs, start_audio, start_playback, pause, end, start_loop, get_songs
+from tkinter import ttk
+import vlc
+from converterfunctions import download
+import re
+import threading
+import os
+import shutil
 
-```tkinter```: Used for the GUI 
-
-```vlc```: for media playback
-
-```re``` (regular expressions): for client-side youtube format validation
-
-```threading```: allowing concurrent execution for downloading and playing music simultaneously
-
-```os``: making new playlists
-
-```shutil```: moving music into playlists
-
-## GUI looks like this: 
-
-![gui png](gui.png)
+#I learned tkinter from https://www.youtube.com/watch?v=TuLxsvK4svQ (Bro code on youtube)
 
 
-## Setting up the layout for my GUI
-
-```username = os.getenv("USERNAME")
+username = os.getenv("USERNAME")
 window = Tk()
-player = vlc.MediaPlayer()
-
 window.geometry("720x500")
 window.title("GUI for Music App")
 window.config(background="#3b424d")
@@ -40,46 +30,19 @@ stop_button = Button(window, text="Stop", fg="white", bg="#3b424d", font = ("Ari
 stop_button.place(x=200, y=15)
 pause_button = Button(window, text="Pause", fg="white", bg="#3b424d", font = ("Arial", 13, 'bold'), command = pause)
 pause_button.place(x=350, y=15)
-
+player = vlc.MediaPlayer()
 currentsong = player.get_media()
 loop_button = Button(window, text="Loop", fg="white", bg="#3b424d", font = ("Arial", 13, 'bold'), command=lambda: start_loop(currentsong))
 loop_button.place(x=500, y=15)
-```
 
-Here, I initialised the window and player for the app, while also choosing the window size as ```"720x500"```, setting the title
 
-- Used the ```Frame()``` for the separator
-- Setup all the buttons, including Stop, Pause, Loop, 
-
-## Updatating the playlists buttons
-
-```
 def playlistupdater():
     global directories
     directories = show_dirs()
     return directories
-directories = playlistupdater()  
-```
-show_dirs(): 
-
-```
-def show_dirs():
-    filepath = rf'C:\Users\{username}\ytmp3'
-    lst = []
-    for entry in os.listdir(filepath):
-        full_path = os.path.join(filepath, entry) 
-        if os.path.isdir(full_path): 
-            fullpath = full_path[32:]
-            if (fullpath != ".venv") and (fullpath != "__pycache__") and (fullpath != "build"): #cannot be these 2 as they do not contain music
-                lst.append(fullpath) 
-    return lst
-```
-returns a list of files which are not called ```.venv``` and ```__pycache__```
+directories = playlistupdater()         
 
 
-## Making the playlist buttons
-
-```
 def playlist_button_maker(playlists):
     for i in range(len(playlists)):
         #button made for each directory which contains the songs inside them for playback
@@ -104,11 +67,8 @@ def playlist_button_maker(playlists):
 def playlist_status():
         playlist_button_maker(directories)
 playlist_status()
-```
-This adds new buttons while simultaneously creating menu buttons inside, containing the media files inside, which play when clicked
 
-## Creation of the 3 buttons (Add, New playlist, Add to playlist)
-```
+
 actions = ttk.Notebook(window) 
 #tabs for adding new songs, playlists and moving songs to playlists
 
@@ -119,11 +79,6 @@ add_to_playlist = Frame(actions, bg='#3b424d', width=500, height= 370)
 actions.add(add, text='Add')
 actions.add(new_playlist, text='New playlist')
 actions.add(add_to_playlist, text='Add to playlist')
-```
-- Adding the buttons to the window Notebook
-
-### Styling of the notebook buttons
-```
 style = ttk.Style()
 style.configure('TNotebook.Tab', padding=(35, 5), font=('Arial', 10, 'bold'), foreground="#3b424d", background="grey", )
 url_entry = Entry(add, font = ('Arial',15))
@@ -131,11 +86,8 @@ url_entry.place(x=110, y=140)
 playlist_name = Entry(new_playlist, font=('Arial', 15))
 playlist_name.place(x=110, y=140)
 #styling of tabs and sizing
-```
 
-## Adding the converter 
-```
-ef url_valid():
+def url_valid():
     url = url_entry.get()
     linkpattern = r'(https?://)?(www\.)?(youtube|youtu|youtube-nocookie)\.(com|be)/(watch\?v=|embed/|v/|shorts/|playlist\?list=)?([^&=%\?]{11})'
     #youtube regex matching the url the user types in the entry inside the add tab (https://stackoverflow.com/questions/19377262/regex-for-youtube-url)
@@ -155,14 +107,7 @@ ef url_valid():
     url_entry.delete(0, END)
     #delete entry for user convenience after add  convert is pressed
 convert= Button(add, text='Convert', command=url_valid)
-```
 
-- Regex is from stackoverflow for client side checking
-- If URL matches pattern, button turns green, if not it turns red
-
-## Making new playlists
-
-```
 def newplaylist(name): 
     global directories 
     vname = rf"C:\Users\{username}\ytmp3\{name}"
@@ -177,19 +122,19 @@ def newplaylist(name):
         add.config(bg='red')
         print("Playlists are full")
 # newplaylist() makes a directory from the entry1 entry box, deleted after for user convenience
-```
-- maxmimum playlist amount is 7
-- After adding a playlist, the buttons are recreated to ensure real-time creation of playlists and buttons
-- I first went for a window.after() approach to update indefinitely every 3 seconds, but it was not optimised and could not stay open for extended periods of time.
 
-## Allowing newly downloaded songs to show real time in the add to playlist tab
+add = Button(new_playlist, text = "Add playlist", command=lambda: newplaylist(playlist_name.get()))
+add.place(x=340, y=141)
+convert.place(x=340, y=141)
+actions.place(x=180, y=60)
 
-```
+
 def refreshingsongs():
     global songs
     songs = get_songs()
+    #window.after(3000, refreshingsongs)
     return songs              # Update the global `songs` variable
- 
+
 songs = refreshingsongs()
 def listofsongs(songs):
     for i in range(len(songs)):
@@ -206,6 +151,67 @@ def refreshinglist():
     listofsongs(songs)
     window.after(3000, refreshinglist)
 refreshinglist()
-```
-- After being downloaded, a button is made in the add_to_playlist tab, allowing the song to be moved to a playlist
+#refreshes the songs button list every 4 seconds
+
+def playlistbuttons(playlists):
+      for i in range(len(playlists)):
+        playlists_buttons = Button(add_to_playlist,
+                             text=f'{playlists[i]}',
+                             fg="white",
+                             bg="#3b424d",
+                             font=("Arial", 10, "bold"),
+                             command=lambda d=playlists[i]: selectplaylist(d))   
+        playlists_buttons.place(x=400, y=80 + (i * 40))
+def updateplayliststab():
+        global directories
+        directories = show_dirs()
+        playlistbuttons(directories)
+        
+#same logic as outer playlist buttons, refreshing to match live playlist statuses every 4 sec        
+directories = updateplayliststab()
+
+directories = show_dirs()
+updateplayliststab()
+moving = [] #empty list as a song will get added to it, then a playlist
+def selectsong(button):
+    global moving
+    moving.insert(0, button) #song takes 0 index first
+    return moving
+
+def selectplaylist(button):
+    global moving
+    if len(moving) > 1:
+        moving[1] = button  
+    else:
+        moving.append(button)  #playlist takes 1 index, second
+    return moving
+
+def add_playlist():
+    global moving
+    if len(moving) < 2:
+        print("Please select both a song and a playlist.")
+        return
+
+    file = moving[0]  # the selected song
+    playlist = moving[1]  #the selected playlist
+
+    try:
+        # valid path check
+        shutil.move(file, playlist)
+        print(f"Moved {file} to {playlist}")
+        playlist_button_maker(directories)
+        moving.clear()  # clear after file moved
+
+    except FileNotFoundError: 
+        print("File not found")
+move = Button(add_to_playlist, text="Move song", fg="white",
+                             bg="#3b424d", 
+                             font=("Arial", 10, "bold"), command=lambda: add_playlist())
+#after song and playlist is selected, Move song button pressed calls add() function which moves
+info = Label(add_to_playlist, bg = "#3b424d", text="Select song first, then playlist to move to", fg='white', font=("Arial", 10, 'bold'), width=40 )
+info.place(x=180, y=20)
+move.place(x=100, y=20)
+
+window.mainloop()
+
 
